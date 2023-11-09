@@ -1,38 +1,58 @@
-const butInstall = document.getElementById('buttonInstall');
+import { openDB } from 'idb';
 
-// Logic for installing the PWA
-// TODO: Add an event handler to the `beforeinstallprompt` event
-window.addEventListener('beforeinstallprompt', (event) => {
-    // Prevent Chrome 67 and earlier from automatically showing the prompt
-    event.preventDefault();
+const initdb = async () =>
+  openDB('jate', 1, {
+    upgrade(db) {
+      if (db.objectStoreNames.contains('jate')) {
+        console.log('jate database already exists');
+        return;
+      }
+      db.createObjectStore('jate', { keyPath: 'id', autoIncrement: true });
+      console.log('jate database created');
+    },
+  });
 
-    // Stash the event so it can be triggered later.
-    let deferredPrompt = event;
+// TODO: Add logic to a method that accepts some content and adds it to the database
+export const putDb = async (content) => {
+    console.log('PUT to the database');
 
-    // Update the install UI to notify the user app can be installed
-    butInstall.style.display = 'block';
+    // Create a connection to the database database and version we want to use.
+    const jateDb = await openDB('jate', 1);
 
-    butInstall.addEventListener('click', () => {
-        // hide our user interface that shows our A2HS button
-        butInstall.style.display = 'none';
+    // Create a new transaction and specify the database and data privileges.
+    const tx = jateDb.transaction('jate', 'readwrite');
 
-        // Show the prompt
-        deferredPrompt.prompt();
+    // Open up the desired object store.
+    const store = tx.objectStore('jate');
 
-        // Wait for the user to respond to the prompt
-        deferredPrompt.userChoice.then((choiceResult) => {
-            if (choiceResult.outcome === 'accepted') {
-                console.log('User accepted the A2HS prompt');
-            } else {
-                console.log('User dismissed the A2HS prompt');
-            }
-            deferredPrompt = null;
-        });
-    });
-});
+    // Use the .put() method on the store and pass in the content.
+    const request = store.put({ id: 1, value: content });
 
-// TODO: Add a handler for the `appinstalled` event
-window.addEventListener('appinstalled', (event) => {
-    // Log install to analytics
-    console.log('Installation successful.');
-});
+    // Get confirmation of the request.
+    const result = await request;
+    console.log('🚀 - data saved to the database', result);
+};
+
+// TODO: Add logic for a method that gets all the content from the database
+export const getDb = async () => {
+    console.log('GET from the database');
+
+    // Create a connection to the database database and version we want to use.
+    const jateDb = await openDB('jate', 1);
+
+    // Create a new transaction and specify the database and data privileges.
+    const tx = jateDb.transaction('jate', 'readonly');
+
+    // Open up the desired object store.
+    const store = tx.objectStore('jate');
+
+    // Use the .getAll() method to get all data in the database.
+    const request = store.get(1);
+
+    // Get confirmation of the request.
+    const result = await request;
+    console.log('result.value', result);
+    return result?.value;
+};
+
+initdb();
